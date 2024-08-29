@@ -1,0 +1,19 @@
+# User
+.idea
+venv/
+.env
+dev.docker-compose.yml
+.pre-commit-config.yaml
+
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+
+# Data
+image_selection_data
+*.obj
+*.mtl
+data
