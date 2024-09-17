@@ -11,31 +11,22 @@ def visible_points3(mesh, potential_indices, R, t,vertices, image_shape, camera_
     origins, vectors, pixels = scene.camera_rays()
  
 
-    # do the actual ray- mesh queries
     points, index_ray, index_tri = mesh.ray.intersects_location(
         origins, vectors, multiple_hits=False
     )
 
-    # for each hit, find the distance along its vector
     depth = trimesh.util.diagonal_dot(points - origins[0], vectors[index_ray])
-    # find pixel locations of actual hits
     pixel_ray = pixels[index_ray]
 
-    # create a numpy array we can turn into an image
-    # doing it with uint8 creates an `L` mode greyscale image
     a = np.zeros(scene.camera.resolution, dtype=np.uint8)
 
-    # scale depth against range (0.0 - 1.0)
     depth_float = (depth - depth.min()) / np.ptp(depth)
 
     # convert depth into 0 - 255 uint8
     depth_int = (depth_float * 255).round().astype(np.uint8)
-    # assign depth to correct pixel locations
     a[pixel_ray[:, 0], pixel_ray[:, 1]] = depth_int
-    # create a PIL image from the depth queries
     img = PIL.Image.fromarray(a)
     return img
-    # show the resulting image
     #img.show()
 
 
@@ -52,3 +43,67 @@ def visible_points2(mesh, potential_indices, camera_position, vertices, image_sh
     img[visible_indices] = 255
     img = PIL.Image.fromarray(img)
     return img
+
+
+
+def manual_project(point, rotation, translation, camera_matrix):
+    point = np.array(point).reshape(3, 1)
+    translation = np.array(translation).reshape(3, 1)
+    if rotation.shape == (3, 3):
+        R = rotation
+    elif rotation.shape == (3, 1) or rotation.shape == (1, 3):
+        R, _ = cv.Rodrigues(rotation)
+    else:
+        raise ValueError("Rotation must be a 3x3 matrix or a 3x1 vector")
+    point_camera = R @ point + translation
+    x, y, z = point_camera.flatten()
+    u = camera_matrix[0,0] * x/z + camera_matrix[0,2]
+    v = camera_matrix[1,1] * y/z + camera_matrix[1,2]
+    return np.array([u, v])
+
+print("vertices_camera shape:", vertices_camera.shape)
+print("rotation shape:", rotation.shape)
+print("translation_cam shape:", translation_cam.shape)
+print("camera_matrix shape:", camera_matrix.shape)
+
+for i in range(5):
+    point = vertices_camera[i]
+    projected = manual_project(point, rotation, translation_cam, camera_matrix)
+    print(f"Point {i}: 3D = {point}, Projected = {projected}")
+
+
+image_shape = (5460, 8192)
+
+camera_matrix = np.float32(camera_info["matrix"])
+distortion_coefficients = np.float32(camera_info["distortion_coefficients"])
+rotation = np.float32(pose_info["rotation"]).reshape(3, 3)
+center = np.float32(pose_info["center"]).reshape(3, 1)
+pose_vertices = pier_cutted.vertices.astype(np.float32)
+translation_cam = (-rotation @ center).reshape(3, 1)
+
+print(f"Total vertices: {len(pose_vertices)}")
+
+rotation_vector, _ = cv.Rodrigues(rotation)
+coords = pier_cutted.vertices.view(np.ndarray).astype(np.float32)
+
+assert pose_vertices.dtype == np.float32
+assert rotation_vector.dtype == np.float32
+assert translation_cam.dtype == np.float32
+assert camera_matrix.dtype == np.float32
+assert distortion_coefficients.dtype == np.float32
+
+# Proietta i vertici nello spazio 2D
+projected_vertices, _ = cv.projectPoints(coords, rotation_vector, translation_cam, camera_matrix, distortion_coefficients)
+projected_vertices = projected_vertices.squeeze().astype(np.int64)
+
+def visualize_projected(vertices_image, image_size):
+    plt.figure(figsize=(10, 10))
+    plt.scatter(vertices_image[:, 0], vertices_image[:, 1], c='blue', s=1, alpha=0.5, label='All vertices')
+    plt.xlim(0, image_size[1])
+    plt.ylim(image_size[0], 0)  # Invert y-axis to match image coordinates
+    plt.legend()
+    plt.title('Projected Vertices')
+    plt.show()
+
+
+visualize_projected(projected_vertices, image_shape)

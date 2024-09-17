@@ -102,26 +102,37 @@ def visualize_results_interactive(mesh, visible_vertices, camera_position, R, t)
             name=f'Camera orientation {["X", "Y", "Z"][i]}'
         ))
 
-    # Combine all traces
     data = [all_vertices, visible_scatter, camera_scatter] + line_traces
 
     max_size_x = abs(mesh.bounds[0][0] - mesh.bounds[1][0])
     max_size_y = abs(mesh.bounds[0][1] - mesh.bounds[1][1])
-    max_size_z = abs(mesh.bounds[0][2] - mesh.bounds[1][2])
-    
+
+    offset_x = int(20 + max_size_x/2)
+    offset_y = int(20 + max_size_y/2)
+
     layout = go.Layout(
         scene=dict(
             xaxis_title='X',
             yaxis_title='Y',
             zaxis_title='Z',
+            xaxis_range = [-1 * offset_x, offset_x],
+            yaxis_range = [-1 * offset_y, offset_y],
             aspectmode='data'
         ),
-        xaxis=dict(range=[t[0]-max_size_x/2, t[0]+max_size_x/2]),
-        yaxis=dict(range=[t[1]-max_size_y/2, t[1]+max_size_y/2]),
         title='Interactive Mesh Visibility Visualization',
-        width=1000,
-        height=800
+        width=800,
+        margin=dict(r=20, l=10, b=10, t=10)
     )
 
     fig = go.Figure(data=data, layout=layout)
     fig.show()
+
+
+def visualize_projected(vertices_image, image_size):
+    plt.figure(figsize=(10, 10))
+    plt.scatter(vertices_image[:, 0], vertices_image[:, 1], c='blue', s=1, alpha=0.5, label='All vertices')
+    plt.xlim(0, image_size[1])
+    plt.ylim(image_size[0], 0)
+    plt.legend()
+    plt.title('Projected Vertices')
+    plt.show()

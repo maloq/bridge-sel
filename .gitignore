@@ -17,3 +17,5 @@ image_selection_data
 *.obj
 *.mtl
 data
+*.json
+poses
