@@ -107,3 +107,41 @@ def visualize_projected(vertices_image, image_size):
 
 
 visualize_projected(projected_vertices, image_shape)
+
+
+
+u_min = min(0, np.min(projected_vertices[:, 0]))
+u_max = max(camera_info["width"] - 1, np.max(projected_vertices[:, 0]))
+v_min = min(0, np.min(projected_vertices[:, 1]))
+v_max = max(camera_info["height"] - 1, np.max(projected_vertices[:, 1]))
+# Big mask containing all in grayscale
+big_mask_width = u_max - u_min + 1
+big_mask_height = v_max - v_min + 1
+# print(f"Creating mask with {big_mask_width, big_mask_height} shape")
+big_mask = np.zeros((big_mask_height, big_mask_width), dtype=np.uint8)
+# Translation vector moving the origin: how the big mask origin sees the original origin
+t_big_mask = np.int32([-u_min, -v_min])
+# Translate to have all the projected pixels positive in (u, v)
+pixels_projected_t = projected_vertices + t_big_mask
+# Draw the triangles
+for t in range(pier_cutted.faces.shape[0]):
+    poly = pixels_projected_t[pier_cutted.faces[t, :]]
+    cv.drawContours(image=big_mask, contours=[poly], contourIdx=0, color=255, thickness=-1)
+
+def crop(origin_u:int, origin_v:int, width:int, height:int, img):
+    # Sanity checks
+    if origin_u < 0:
+        raise Exception("Invalid origin u")
+    if origin_v < 0:
+        raise Exception("Invalid origin v")
+    if (origin_u + width) > img.shape[1]:
+        raise Exception("Invalid cropping width")
+    if (origin_v + height) > img.shape[0]:
+        raise Exception("Invalid cropping height")
+    
+    return img[origin_v:(origin_v + height), origin_u:(origin_u + width)]
+
+mask = crop(t_big_mask[0], t_big_mask[1], camera_info["width"], camera_info["height"], big_mask)
+
+plt.imshow(mask) 
+plt.show()
