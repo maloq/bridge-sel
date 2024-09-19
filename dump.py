@@ -1,3 +1,86 @@
+scene = pier_cutted.scene()
+
+def rotation_matrix_to_euler_angles(R):
+    """Converts a rotation matrix to Euler angles (yaw, pitch, roll)."""
+
+    sy = np.sqrt(R[0, 0] ** 2 + R[1, 0] ** 2)
+    singular_case = sy < 1e-6
+
+    if not singular_case:
+        yaw = np.arctan2(R[1, 0], R[0, 0])
+        pitch = -np.arcsin(R[2, 0])
+        roll = np.arctan2(R[2, 1], R[2, 2])
+    else:
+        yaw = np.arctan2(-R[1, 2], R[0, 2])
+        pitch = np.pi / 2 if R[2, 0] > 0 else -np.pi / 2
+        roll = 0
+
+    return yaw, pitch, roll
+
+def get_camera_lookat_position(camera_position, camera_rotation, distance=1.0):
+    """
+    Calculate the 3D point where the camera is looking at and the distance from it.
+
+    :param camera_position: 3D vector of the camera position (C_x, C_y, C_z).
+    :param camera_rotation: 3x3 camera rotation matrix.
+    :param distance: Scalar distance from the camera position to the look-at point (default 1.0).
+    :return: Tuple (look_at_point, distance_from_look_at)
+    """
+    
+    # Camera position (C_x, C_y, C_z)
+    camera_position = np.array(camera_position)
+    
+    # Extract the forward direction from the rotation matrix
+    forward_direction = camera_rotation[:, 2]  # The third column of the rotation matrix
+    
+    # Normalize the forward direction (just in case it's not unit length)
+    forward_direction = forward_direction / np.linalg.norm(forward_direction)
+    
+    # Calculate the look-at point (a point in space where the camera is looking)
+    look_at_point = camera_position + forward_direction * distance
+    
+    # Calculate the distance to the look-at point (optional, could be equal to input `distance`)
+    actual_distance = np.linalg.norm(look_at_point - camera_position)
+    
+    return look_at_point, actual_distance
+
+
+scene.camera.resolution = [camera_info["width"],camera_info["height"]]
+
+look_at_point, actual_distance = get_camera_lookat_position(center.squeeze(), rotation)
+scene.set_camera(angles=rotation_matrix_to_euler_angles(rotation), distance=actual_distance, center=look_at_point)
+
+
+fov_x = np.rad2deg(2 * np.arctan2(camera_info["width"], 2 * camera_matrix[0,0]))
+fov_y = np.rad2deg(2 * np.arctan2(camera_info["height"], 2 * camera_matrix[1,1]))
+print('Camera FOV', (fov_x, fov_y))
+scene.camera.focal = (camera_matrix[0,0], camera_matrix[1,1])
+
+camera = scene.camera
+origins, vectors, pixels = scene.camera_rays()
+
+# do the actual ray- mesh queries
+points, index_ray, index_tri = pier_cutted.ray.intersects_location(
+    origins, vectors, multiple_hits=False)
+# for each hit, find the distance along its vector
+depth = trimesh.util.diagonal_dot(points - origins[0], vectors[index_ray])
+# find pixel locations of actual hits
+pixel_ray = pixels[index_ray]
+# create a numpy array we can turn into an image
+# doing it with uint8 creates an `L` mode greyscale image
+a = np.zeros(scene.camera.resolution, dtype=np.uint8)
+# scale depth against range (0.0 - 1.0)
+depth_float = ((depth - depth.min()) / depth.ptp())
+# convert depth into 0 - 255 uint8
+depth_int = (depth_float * 255).round().astype(np.uint8)
+# assign depth to correct pixel locations
+a[pixel_ray[:, 0], pixel_ray[:, 1]] = depth_int
+# create a PIL image from the depth queries
+img = PIL.Image.fromarray(a)
+# show the resulting image
+img.show()
+
+
 def visible_points3(mesh, potential_indices, R, t,vertices, image_shape, camera_matrix):
 
     scene = mesh.scene()
@@ -145,3 +228,18 @@ mask = crop(t_big_mask[0], t_big_mask[1], camera_info["width"], camera_info["hei
 
 plt.imshow(mask) 
 plt.show()
+
+
+
+def world_to_camera(vertices, camera_rotation, camera_position):
+    vertices = np.array(vertices)
+    camera_position = np.array(camera_position)
+    camera_rotation = np.array(camera_rotation)
+    
+    camera_position = camera_position.reshape(1, 3)
+    translated_vertices = vertices - camera_position
+    rotated_vertices = np.dot(translated_vertices, camera_rotation.T)
+        
+    return rotated_vertices
+
+rotated_vertices = world_to_camera(pier_cutted.vertices.view(np.ndarray).astype(np.float64), rotation, center)
