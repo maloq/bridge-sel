@@ -6,7 +6,8 @@ from mpl_toolkits.mplot3d import Axes3D
 import plotly.graph_objects as go
 
 
-def visualize_results(mesh, visible_vertices, camera_position, R):
+
+def visualize_results_2d(mesh, visible_vertices, camera_position, R):
     """
     Visualize the mesh, visible vertices, and camera position in 3D.
     
@@ -31,21 +32,19 @@ def visualize_results(mesh, visible_vertices, camera_position, R):
     ax.scatter(camera_position[0], camera_position[1], camera_position[2], 
                c='blue', s=100, label='Camera')
 
-    # Plot camera orientation (using the rotation matrix)
+    # Plot camera orientation
     for i in range(3):
         direction = R[:, i]
         ax.quiver(camera_position[0], camera_position[1], camera_position[2],
                   direction[0], direction[1], direction[2],
                   length=0.5, color=['r', 'g', 'b'][i])
 
-    # Set labels and title
     ax.set_xlabel('X')
     ax.set_ylabel('Y')
     ax.set_zlabel('Z')
-    ax.set_title('Mesh Visibility Visualization')
+    ax.set_title('Mesh Visibility')
     ax.legend()
 
-    # Set aspect ratio to be equal
     ax.set_box_aspect((np.ptp(mesh.vertices[:, 0]),
                        np.ptp(mesh.vertices[:, 1]),
                        np.ptp(mesh.vertices[:, 2])))
@@ -53,7 +52,8 @@ def visualize_results(mesh, visible_vertices, camera_position, R):
     plt.show()
 
 
-def visualize_results_interactive(mesh, visible_vertices, camera_position, R, t):
+
+def visualize_results(mesh, visible_vertices, camera_position, R):
     """
     Create an interactive 3D visualization of the mesh, visible vertices, and camera position.
     
@@ -62,6 +62,9 @@ def visualize_results_interactive(mesh, visible_vertices, camera_position, R, t)
     :param camera_position: 3D position of the camera
     :param R: 3x3 rotation matrix of the camera
     """
+    if len(camera_position.shape)>1:
+        camera_position = camera_position.squeeze()
+
     # Create scatter plot for all vertices
     all_vertices = go.Scatter3d(
         x=mesh.vertices[:, 0], y=mesh.vertices[:, 1], z=mesh.vertices[:, 2],
@@ -119,7 +122,7 @@ def visualize_results_interactive(mesh, visible_vertices, camera_position, R, t)
             yaxis_range = [-1 * offset_y, offset_y],
             aspectmode='data'
         ),
-        title='Interactive Mesh Visibility Visualization',
+        title='Mesh Visibility',
         width=1000,
         margin=dict(r=20, l=10, b=10, t=10)
     )
@@ -138,19 +141,12 @@ def visualize_projected(vertices_image, image_size):
     plt.show()
 
 
-def visualize_results_rays(mesh, visible_vertices, camera_position, R, t, rays_origins, rays_directions):
-    """
-    Create an interactive 3D visualization of the mesh, visible vertices, camera position, and rays.
-    
-    :param mesh: trimesh.Trimesh object
-    :param visible_vertices: List of indices of visible vertices
-    :param camera_position: 3D position of the camera
-    :param R: 3x3 rotation matrix of the camera
-    :param t: 3x1 translation vector of the camera
-    :param rays_origins: Nx3 array of ray origin points
-    :param rays_directions: Nx3 array of ray direction vectors
-    """
+def visualize_results_rays(mesh, visible_vertices, R, t, rays_origins, rays_directions):
+
+
     # Create scatter plot for all vertices
+    camera_position = t.squeeze()
+
     all_vertices = go.Scatter3d(
         x=mesh.vertices[:, 0], y=mesh.vertices[:, 1], z=mesh.vertices[:, 2],
         mode='markers',
@@ -222,7 +218,7 @@ def visualize_results_rays(mesh, visible_vertices, camera_position, R, t, rays_o
             yaxis_range = [-1 * offset_y, offset_y],
             aspectmode='data'
         ),
-        title='Interactive Mesh Visibility Visualization with Rays',
+        title='Mesh Visibility',
         width=1000,
         margin=dict(r=20, l=10, b=10, t=10)
     )
@@ -232,18 +228,19 @@ def visualize_results_rays(mesh, visible_vertices, camera_position, R, t, rays_o
 
 
 
-def visualize_results_mesh(mesh, visible_vertices, camera_position, R, t, rays_origins, rays_directions):
+def visualize_results_mesh(mesh, visible_vertices, R, t, rays_origins=None, rays_directions=None):
     """
     Create an interactive 3D visualization of the mesh (with faces), visible vertices, camera position, and rays.
     
     :param mesh: trimesh.Trimesh object
     :param visible_vertices: List of indices of visible vertices
-    :param camera_position: 3D position of the camera
     :param R: 3x3 rotation matrix of the camera
     :param t: 3x1 translation vector of the camera
     :param rays_origins: Nx3 array of ray origin points
     :param rays_directions: Nx3 array of ray direction vectors
     """
+    camera_position = t.squeeze()
+
     # Create mesh with faces
     mesh_plot = go.Mesh3d(
         x=mesh.vertices[:, 0],
@@ -290,21 +287,24 @@ def visualize_results_mesh(mesh, visible_vertices, camera_position, R, t, rays_o
         ))
 
     # Visualize rays
-    ray_traces = []
-    for i in range(len(rays_origins)):
-        start_point = rays_origins[i]
-        end_point = start_point + rays_directions[i] * 15
-        ray_traces.append(go.Scatter3d(
-            x=[start_point[0], end_point[0]],
-            y=[start_point[1], end_point[1]],
-            z=[start_point[2], end_point[2]],
-            mode='lines',
-            line=dict(color='yellow', width=1),
-            opacity=0.3,
-            name=f'Ray_{i}' 
-        ))
+    if rays_origins:
+        ray_traces = []
+        for i in range(len(rays_origins)):
+            start_point = rays_origins[i]
+            end_point = start_point + rays_directions[i] * 15
+            ray_traces.append(go.Scatter3d(
+                x=[start_point[0], end_point[0]],
+                y=[start_point[1], end_point[1]],
+                z=[start_point[2], end_point[2]],
+                mode='lines',
+                line=dict(color='yellow', width=1),
+                opacity=0.3,
+                name=f'Ray_{i}' 
+            ))
 
-    data = [mesh_plot, visible_scatter, camera_scatter] + line_traces + ray_traces
+        data = [mesh_plot, visible_scatter, camera_scatter] + line_traces + ray_traces
+    else:
+        data = [mesh_plot, visible_scatter, camera_scatter] + line_traces
 
     max_size_x = abs(mesh.bounds[0][0] - mesh.bounds[1][0])
     max_size_y = abs(mesh.bounds[0][1] - mesh.bounds[1][1])
@@ -321,10 +321,14 @@ def visualize_results_mesh(mesh, visible_vertices, camera_position, R, t, rays_o
             yaxis_range = [-1 * offset_y, offset_y],
             aspectmode='data'
         ),
-        title='Interactive Mesh Visibility Visualization with Rays',
+        title='Mesh Visibility',
         width=1000,
         margin=dict(r=20, l=10, b=10, t=10)
     )
 
     fig = go.Figure(data=data, layout=layout)
     fig.show()
+
+
+
+
