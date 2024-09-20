@@ -23,8 +23,8 @@ def get_camera_info(camera_id, camera_info_path="cameras.json"):
 
 
 def load_image_info(image_name):
-    image_path = os.path.join(IMG_FOLDER_PATH, image_name + IMG_FORMAT)
-    assert os.path.exists(image_path), "Image not found"
+    # image_path = os.path.join(IMG_FOLDER_PATH, image_name + IMG_FORMAT)
+    # assert os.path.exists(image_path), "Image not found"
 
     pose_path = os.path.join(POSES_FOLDER, image_name + '.json')
     assert os.path.exists(pose_path), "Pose file not found"
