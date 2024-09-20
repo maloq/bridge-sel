@@ -4,3 +4,4 @@ opencv-python
 trimesh
 rtree
 open3d
+embreex
