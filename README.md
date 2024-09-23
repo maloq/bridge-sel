@@ -1,53 +1,58 @@
-Image Selection Project
-Goal
-Given a set of images of a bridge taken by a camera, I want to determine the minimum number of images needed to fully visualise/cover the bridge. This is because the images overlap in certain areas, making it necessary to select a subset that covers the entire object.
-This problem can be compared to a type of “set cover problem”.
+## Image selection
 
-In addition to the images, we also have an .obj file that we created from the images to obtain a textured mesh.
+The goal of this project is to develop an algorithm that, given a set of drone-captured images of a bridge, determines the minimum number of images needed to fully visualize the structure. As the images overlap, the challenge lies in selecting a subset that provides complete coverage while prioritizing close-up images for detailed defect inspection.
 
-However, we don’t want to use images taken from further away, as they do not allow us to see the details up close. The purpose of these images is to identify defects on the bridge, so it is necessary to view the elements up close. Therefore, we always want to prefer images that are closer to the bridge.
-Terminology
-Image → the picture taken by the camera’s drone
-Pose → the position of the camera in the space when the picture is taken (position and orientation)
-Camera →the camera used to take the pictures
-Mesh → a surface with a triangular shape made of 3 vertices and a face
-Material
-Model
-TexturedMesh.obj → the textured model of the bridge
-Decimated-textured-mesh.obj → the same model but much lighter with fewer vertices and faces
-Cameras.xml
-ophikappa_poses.txt
-RIO_CERVOS_DERECHA
-Folder containing all the images taken by the drone
+Due to limitations in the visible point selection algorithm and available data, complete image coverage of the vertices was not achievable. Therefore, the optimization process focuses on maximizing coverage with a given number of images. Full coverage optimization is also implemented, but the current data set does not allow for its use.
 
-The textured model can be visualised in MeshLab software
-Algorithm Definition
-Input:
-Images folder
-File with info about the poses (ophikappa_poses.txt)
-File with info about the cameras/sensors (cameras.xml)
-Textured mesh (.obj file)
-Output:
-Subset of the selected images (the filenames of the images)
-It would be useful to also have an output graph (a curve) showing the percentage of coverage achieved with a certain number of images.
-For example: we achieve a 90% coverage with 1000 images, 95% with 2000 images, and 100% with all images. The coverage percentage could be an input parameter.
+## Data preparation 
 
-Feel free to add any other optional input parameters as needed.
+Poses and camera files shoud be created with `create_poses_data.py` and `read_metashape_cameras_xml.py`,respectively. 
+These files require the following paths.
+- `create_poses_data.py`
+  - `CAMERAS_XML_PATH`: camera info xml path
+  - `OUTPUT_MAPPING_PATH`: output mapping json file
+  - `OUTPUT_PATH`: output json, that will be `CAMERAS_PATH` file
 
-Code Language: Python 3
-Libraries to work with meshes: Trimesh (better) or eventually PyMesh or pymeshlab
-Possible Strategy
-The mesh is viewed as a point cloud composed of its vertices. A mesh is made up of vertices, edges and faces, but for this purpose, we focus on the vertices as points in space.
+-  `read_metashape_cameras_xml.py`
+  - `MAPPING_PATH`: mapping json file
+  - `OPHIKAPPA_POSES_PATH`: ophikappa_poses_centered.txt file
+  - `OUTPUT_FOLDER_PATH`: output folder, that will be `POSES_FOLDER` file
 
-For each image, select the vertices that fall within the camera’s field of view. This means determining which points of the mesh are within the visible area of the camera when the image was taken.
+Also data preparation can be run from the `demo.ipynb`
 
-For each selected vertex, check if it’s visible or occluded:
-Ray tracing →draw a ray from the image’s centroid to each vertex.
+## Algorithm
+The algorithm requires the following inputs:
 
-Intersection check →determine if the nearest intersection of the ray with the mesh is at the selected vertex. If it is, the vertex is visible from the camera pose. If another intersection occurs closer to the camera, the vertex is occluded.
+- `IMG_FOLDER_PATH`: Path to the folder containing images
+- `POSES_FOLDER`: Path to the folder containing pose data as JSON files
+- `CAMERAS_PATH`: Path to the camera data JSON file
+- `MESH_PATH`: Path to the mesh OBJ file
 
-Repeat this process for every image to determine which vertices are visible from each camera position.
+These paths must be specified in the `check_visibility.py` file
 
-Construct a coverage map that indicates which vertices are seen by which images and from what distances.
-Image selection →choose the image that covers the most vertices, giving preference to those taken from closer distances to ensure detailed visibility.
+## Code
+- `demo.ipynb` - main notebook with visualisation of vertices coverage, images selection algorithms and calculating coverage percentages
+![visualisation](imgs/2.png)
+
+- `check_visibility.py`: This script contains functions for:
+  - Loading camera and pose information from JSON files
+  - Loading and preparing the mesh
+  - Projecting mesh vertices onto the image plane
+  - Filtering vertices based on camera view and image boundaries
+  - Checking vertex visibility using ray tracing
+  - Finding the indices of visible vertices in the original mesh
+
+- `fixed_data_one_camera.ipynb`: Notebook demonstrating the development and functionality of the ray tracing algorithm, visualizing the rays and mesh
+![visualisation](imgs/1.png)
+
+- `fixed_data.ipynb`: Same code as above, but stripped for reproducibility
+
+- `mesh_utils.py' - script provides utility functions for working with meshes, including slicing a mesh based on camera view and creating image masks from meshes.●
+- `visualisation.py' -  script contains functions for visualizing the results in 2D and 3D, including plotting the mesh, visible vertices, camera position, and rays.
+
+How to Run.
+- Install the required libraries
+- Execute `create_poses_data.py` and `read_metashape_cameras_xml.py` scripts to generate the pose and camera JSON files OR
+generate data using second cell in `demo.ipynb`
+- Run either the `demo.ipynb` or fixed_data.ipynb  notebook to execute the algorithm and visualize the results.
 
