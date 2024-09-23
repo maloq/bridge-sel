@@ -50,7 +50,7 @@ These paths must be specified in the `check_visibility.py` file
 - `mesh_utils.py' - script provides utility functions for working with meshes, including slicing a mesh based on camera view and creating image masks from meshes.●
 - `visualisation.py' -  script contains functions for visualizing the results in 2D and 3D, including plotting the mesh, visible vertices, camera position, and rays.
 
-How to Run.
+## How to Run.
 - Install the required libraries
 - Execute `create_poses_data.py` and `read_metashape_cameras_xml.py` scripts to generate the pose and camera JSON files OR
 generate data using second cell in `demo.ipynb`
